@@ -1,0 +1,50 @@
+SAMPLE DATA — for demonstration and pipeline-testing purposes only.
+This is NOT real clinical guidance and must not be used for patient care.
+
+TYPE 2 DIABETES MELLITUS — MANAGEMENT OVERVIEW (SAMPLE GUIDELINE)
+
+First-Line Therapy
+
+Metformin is first-line therapy for Type 2 Diabetes Mellitus in most adult patients,
+alongside lifestyle modification (diet and physical activity). Metformin treats Type 2
+Diabetes Mellitus by reducing hepatic glucose production and improving insulin
+sensitivity.
+
+Contraindications
+
+Metformin is contraindicated with severe renal impairment (eGFR below 30
+mL/min/1.73m^2), due to an increased risk of lactic acidosis. Metformin is
+contraindicated with acute or chronic metabolic acidosis.
+
+Dosing
+
+Sample recommended dosage for Metformin: starting dose 500mg once or twice daily with
+meals, titrated gradually to a typical maintenance range, to reduce gastrointestinal
+side effects. This is illustrative sample dosing only, not a real prescribing
+reference.
+
+Second-Line Therapy
+
+If glycemic targets are not met on Metformin monotherapy, second-line options include
+SGLT2 inhibitors and GLP-1 receptor agonists. SGLT2 inhibitors treat Type 2 Diabetes
+Mellitus and also reduce cardiovascular risk in patients with established
+cardiovascular disease. GLP-1 receptor agonists treat Type 2 Diabetes Mellitus and are
+associated with weight loss as a secondary benefit.
+
+Monitoring
+
+Clinicians should monitor for Hypoglycemia in patients on sulfonylureas or insulin.
+Clinicians should monitor for Diabetic Retinopathy annually in all patients with Type 2
+Diabetes Mellitus. Clinicians should monitor for Diabetic Nephropathy via annual
+urine albumin-to-creatinine ratio testing.
+
+Risk Factors
+
+Obesity is a risk factor for Type 2 Diabetes Mellitus. Sedentary Lifestyle is a risk
+factor for Type 2 Diabetes Mellitus. Family History of Diabetes is a risk factor for
+Type 2 Diabetes Mellitus.
+
+Symptoms
+
+Type 2 Diabetes Mellitus has symptom Polyuria. Type 2 Diabetes Mellitus has symptom
+Polydipsia. Type 2 Diabetes Mellitus has symptom Fatigue.

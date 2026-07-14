@@ -1,0 +1,32 @@
+SAMPLE DATA — for demonstration and pipeline-testing purposes only.
+This is NOT real clinical guidance and must not be used for patient care.
+
+CARDIOVASCULAR RISK IN TYPE 2 DIABETES — SAMPLE RESEARCH SUMMARY
+
+Background
+
+Type 2 Diabetes Mellitus is a well-established risk factor for Myocardial Infarction
+and Stroke. Patients with Type 2 Diabetes Mellitus and established cardiovascular
+disease benefit from glucose-lowering therapies with demonstrated cardiovascular
+protection, rather than glucose-lowering alone.
+
+Findings
+
+SGLT2 inhibitors reduce the risk of Heart Failure Hospitalization in patients with
+Type 2 Diabetes Mellitus, independent of their glucose-lowering effect. GLP-1 receptor
+agonists reduce the risk of Myocardial Infarction and Stroke in patients with Type 2
+Diabetes Mellitus and established atherosclerotic cardiovascular disease.
+
+Contraindications and Cautions
+
+SGLT2 inhibitors are contraindicated with a history of recurrent Genital Mycotic
+Infection without appropriate counseling and monitoring. SGLT2 inhibitors require
+monitoring for Diabetic Ketoacidosis, including in patients with normal blood glucose
+("euglycemic DKA").
+
+Practice Implication
+
+Treatment Protocol recommends assessing cardiovascular risk in every adult patient
+newly diagnosed with Type 2 Diabetes Mellitus, and preferring SGLT2 inhibitors or GLP-1
+receptor agonists as second-line therapy when established cardiovascular disease or
+heart failure is present.

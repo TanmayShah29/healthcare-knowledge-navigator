@@ -1,0 +1,18 @@
+# Core
+neo4j>=5.20.0
+python-dotenv>=1.0.0
+langchain>=0.3.9
+langchain-core>=0.3.0
+
+# ── Provider integration ────────────────────────────────────────────────
+# Install the LangChain package for whichever provider you set via
+# LLM_PROVIDER / EMBEDDING_PROVIDER in .env — see README.md for the full
+# provider table. The default (google_genai) covers both chat and
+# embeddings in a single package.
+# langchain-google-genai>=2.0.0   # google_genai (Gemini chat + embeddings)
+# langchain-anthropic>=0.3.0    # anthropic (Claude chat — no embeddings API; pair with another provider for EMBEDDING_PROVIDER)
+# langchain-openai>=0.2.0       # openai (GPT chat + embeddings)
+# langchain-groq>=0.2.0         # groq (chat only — pair with another provider for embeddings)
+# langchain-mistralai>=0.2.0    # mistralai (chat + embeddings)
+# langchain-xai>=0.1.0          # xai (Grok, chat only)
+langchain-ollama>=0.2.0       # ollama (local, no API key, chat + embeddings)
