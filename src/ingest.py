@@ -1,7 +1,10 @@
-"""Ingestion pipeline: raw document text -> chunks -> (embeddings + extracted
-triples) -> Neo4j. Each chunk is written to both halves of the hybrid store:
-as a Chunk node with a vector embedding, and as source material for the
+"""Ingestion pipeline: raw document text (or PDF) -> chunks -> (embeddings +
+extracted triples) -> Neo4j. Each chunk is written to both halves of the hybrid
+store: as a Chunk node with a vector embedding, and as source material for the
 Extractor agent's structured triples.
+
+Supports plain text (.txt) and PDF (.pdf) input. PDFs are extracted page-by-page
+with PyMuPDF, preserving heading structure for section-aware chunking.
 
 Chunking is paragraph-aware (same approach as
 ../graphrag-knowledge-assistant/src/ingest.py) with lightweight section
@@ -16,8 +19,11 @@ import uuid
 from src.config import CHUNK_SIZE
 from src.state import IngestResult, Chunk
 from src.embeddings import embed_texts
-from src.agents.extractor import extract_triples
-from src.graph_db import upsert_triples, upsert_chunk, ensure_constraints
+from src.agents.extractor import extract_all
+from src.graph_db import (
+    upsert_triples, upsert_chunk, upsert_dosages, upsert_contraindications,
+    ensure_constraints,
+)
 
 _HEADING_RE = re.compile(r"^(#{1,6}\s+.+|[A-Z][A-Z0-9 /&,\-]{3,60})$")
 
@@ -56,9 +62,14 @@ def _chunk_with_sections(text: str, chunk_size: int) -> list[tuple[str, str]]:
     return chunks or [(text, "")]
 
 
-def ingest_text(text: str, source_doc: str, doc_type: str = "clinical_guideline") -> IngestResult:
+def ingest_text(
+    text: str,
+    source_doc: str,
+    doc_type: str = "clinical_guideline",
+    publication_date: str = "",
+) -> IngestResult:
     ensure_constraints()
-    result = IngestResult(source_doc=source_doc, doc_type=doc_type)
+    result = IngestResult(source_doc=source_doc, doc_type=doc_type, publication_date=publication_date)
 
     chunk_pairs = _chunk_with_sections(text, CHUNK_SIZE)
     chunk_texts = [c for c, _ in chunk_pairs]
@@ -78,12 +89,17 @@ def ingest_text(text: str, source_doc: str, doc_type: str = "clinical_guideline"
                 doc_type=doc_type,
                 section=section,
                 embedding=vector,
+                publication_date=publication_date,
             )
             upsert_chunk(chunk)
 
-            triples = extract_triples(chunk_text, source_doc, doc_type)
+            triples, dosages, contras = extract_all(chunk_text, source_doc, doc_type)
             result.triples_extracted.extend(triples)
             result.triples_loaded += upsert_triples(triples)
+            result.dosages_extracted.extend(dosages)
+            result.dosages_loaded += upsert_dosages(dosages)
+            result.contraindications_extracted.extend(contras)
+            result.contraindications_loaded += upsert_contraindications(contras)
             result.chunks_processed += 1
         except Exception as e:  # keep going on a single bad chunk
             result.errors.append(f"Chunk failed: {e}")
@@ -91,7 +107,34 @@ def ingest_text(text: str, source_doc: str, doc_type: str = "clinical_guideline"
     return result
 
 
-def ingest_file(path: str, doc_type: str = "clinical_guideline") -> IngestResult:
-    with open(path, "r", encoding="utf-8") as f:
-        text = f.read()
-    return ingest_text(text, source_doc=os.path.basename(path), doc_type=doc_type)
+def _extract_pdf(path: str) -> str:
+    """Extract text from a PDF using PyMuPDF, page by page. Each page's text
+    is separated by double newlines to maintain paragraph boundaries for the
+    chunker. Returns the full document text."""
+    import pymupdf
+
+    doc = pymupdf.open(path)
+    pages = []
+    for page in doc:
+        pages.append(page.get_text())
+    doc.close()
+    return "\n\n".join(pages)
+
+
+def ingest_file(
+    path: str,
+    doc_type: str = "clinical_guideline",
+    publication_date: str = "",
+) -> IngestResult:
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".pdf":
+        text = _extract_pdf(path)
+    else:
+        with open(path, "r", encoding="utf-8") as f:
+            text = f.read()
+    return ingest_text(
+        text,
+        source_doc=os.path.basename(path),
+        doc_type=doc_type,
+        publication_date=publication_date,
+    )

@@ -23,16 +23,20 @@ src/
   config.py          # env/config: Neo4j, LLM_PROVIDER/AGENT_MODEL, EMBEDDING_PROVIDER/MODEL/DIMENSIONS, retrieval + confidence tuning
   llm.py              # get_llm(temperature) — chat model factory
   embeddings.py        # get_embeddings() / embed_text() / embed_texts() — embedding factory
-  state.py               # Triple, Chunk, VectorHit, IngestResult, RetrievalResult dataclasses
-  graph_db.py              # Neo4j wrapper: entity upsert/traversal (graph) + chunk upsert/vector search (vector)
-  ingest.py                  # section-aware chunking + hybrid ingestion pipeline
-  retrieval.py                 # runs vector search + graph traversal legs, returns both
-  confidence.py                  # deterministic score_confidence() — NOT an LLM call
-  main.py                          # CLI: check / ingest / query / stats
+  state.py               # Triple, DosageFact, ContraindicationFact, Chunk, VectorHit, IngestResult, RetrievalResult dataclasses
+  graph_db.py              # Neo4j wrapper: entity upsert/traversal (graph) + chunk upsert/vector search (vector) + dosage/contraindication queries
+  ingest.py                  # section-aware chunking + hybrid ingestion pipeline (txt + PDF)
+  retrieval.py                 # runs vector search + graph traversal + dosage/contraindication lookup legs
+  confidence.py                  # deterministic score_confidence() with recency weighting — NOT an LLM call
+  main.py                          # CLI: check / ingest / query / stats / web
+  web.py                            # Gradio web UI (Ingest/Query/Stats tabs)
   agents/
-    extractor.py                    # clinical text chunk -> triples (ingestion time)
+    extractor.py                    # clinical text chunk -> triples + dosages + contraindications (ingestion time)
     entity_linker.py                  # question -> candidate clinical entity names (query time)
     synthesizer.py                      # question + evidence -> cited answer + grounded flag (query time)
+eval/
+  test_cases.json          # 8 labeled Q&A test cases with expected sources/confidence/keywords
+  run_eval.py              # automated eval harness runner
 samples/
   t2dm_management_guideline.txt         # sample clinical_guideline, fictional/illustrative
   cv_risk_t2dm_research_summary.txt       # sample research_paper, fictional/illustrative
@@ -78,8 +82,19 @@ samples/
   connected seed entity or a large corpus can blow out the Synthesizer's context.
 - **`vector_search`'s SEARCH-clause/procedure fallback must stay in sync.** Both query
   strings in `graph_db.py` return the same columns (`chunk_id`, `text`, `source_doc`,
-  `doc_type`, `section`, `score`) so `RetrievalResult` construction doesn't need to care
-  which one ran. If you add a field to `Chunk`, add it to both queries.
+  `doc_type`, `section`, `score`, `publication_date`) so `VectorHit` construction doesn't
+  need to care which one ran. If you add a field to `Chunk`, add it to both queries.
+- **The Extractor's `extract_all()` must return three lists in one LLM call** (triples,
+  dosages, contraindications). Do not split this into three separate calls — the single
+  call is both faster and gives the model better context for consistent extraction.
+- **`upsert_dosages` and `upsert_contraindications` must stay idempotent (MERGE, not
+  CREATE).** Same invariant as `upsert_triples` — re-ingesting the same document should
+  never duplicate dosage or contraindication relationships.
+- **Recency weighting is a soft signal, not a hard cutoff.** The `_recency_penalty()`
+  function in `confidence.py` applies a linear penalty for documents older than
+  `RECENCY_FRESH_YEARS` (3 years), capped at `RECENCY_MAX_PENALTY` (0.1). Older
+  documents are still useful — they're just slightly less authoritative when newer ones
+  exist. Never make recency a hard filter that excludes older sources entirely.
 
 ## Conventions
 
@@ -111,15 +126,18 @@ samples/
 
 ## Testing changes
 
-No automated test suite yet (Phase 10 in `PLAN.md` is a manual validation pass —
-judging whether extracted clinical triples and synthesized answers are actually correct
-needs a human, ideally one with clinical background). Until an eval harness exists,
-validate changes with:
+Run the automated eval harness (8 labeled Q&A test cases) to catch regressions:
+
+```bash
+python -m eval.run_eval --verbose
+```
+
+Or validate manually:
 
 ```bash
 python -m src.main check
-python -m src.main ingest samples/t2dm_management_guideline.txt clinical_guideline
-python -m src.main ingest samples/cv_risk_t2dm_research_summary.txt research_paper
+python -m src.main ingest samples/t2dm_management_guideline.txt clinical_guideline --date 2024-01-01
+python -m src.main ingest samples/cv_risk_t2dm_research_summary.txt research_paper --date 2023-06-15
 python -m src.main query "What second-line diabetes drug should I consider for a patient with heart failure, and are there monitoring concerns?"
 python -m src.main query "What is the recommended dosage of insulin glargine?"
 ```
@@ -135,10 +153,11 @@ confident-sounding fabrication.
 ## Things NOT to do
 
 - Don't let the Extractor or Synthesizer write directly to Neo4j — all writes go
-  through `graph_db.py`'s `upsert_triples`/`upsert_chunk`, so there's one place that
-  enforces the idempotent-MERGE invariant.
+  through `graph_db.py`'s `upsert_triples`/`upsert_chunk`/`upsert_dosages`/`upsert_contraindications`,
+  so there's one place that enforces the idempotent-MERGE invariant.
 - Don't let the Synthesizer see raw Cypher, embeddings, or graph internals — it only
-  ever gets plain-language fact strings (`Triple.as_fact_string()` + `.citation()`) and
+  ever gets plain-language fact strings (`Triple.as_fact_string()` + `.citation()`,
+  `DosageFact.as_fact_string()`, `ContraindicationFact.as_fact_string()`) and
   chunk text with citations, so its prompt stays portable across schema changes.
 - Don't hardcode a provider or model name anywhere outside `src/config.py`,
   `src/llm.py`, and `src/embeddings.py`.

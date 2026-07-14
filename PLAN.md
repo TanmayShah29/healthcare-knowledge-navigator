@@ -125,20 +125,6 @@ labels land where expected.
 4. Ask a question with no supporting evidence in the ingested set — confirms the
    Synthesizer flags it AND confidence comes back Low, not a fluent unsupported guess
 
-## Phase 11 — Stretch Goals (post-MVP, priority order)
-1. **PDF ingestion** — guidelines are commonly distributed as PDF in practice; add a
-   PDF → text extraction step ahead of chunking
-2. **Structured dosage/contraindication schema** — move beyond free-text predicates for
-   dosage and contraindication facts specifically, enabling safer machine-readable
-   queries (e.g. "list all drugs contraindicated with renal impairment")
-3. **Recency weighting** — factor document publication date into confidence scoring, so
-   a superseded 2015 guideline doesn't outweigh a 2024 update
-4. **Web UI** — current interface is CLI-only; a clinician-facing UI would surface
-   citations and confidence more legibly than terminal output
-5. **Eval harness** — a labeled set of clinical Q&A pairs with expected
-   citations/confidence bands, to catch retrieval or synthesis regressions
-   automatically instead of manual spot-checking
-
 ## Status
 - [x] Phase 0 — scaffolding
 - [x] Phase 1 — schema + state design
@@ -155,4 +141,11 @@ labels land where expected.
       insufficient-evidence marker and Low confidence without hallucinating; fixed two
       bugs found in the process — Neo4j SEARCH-clause migration and a substring-vs-
       startswith marker-detection bug — see git history / CLAUDE.md invariants)
-- [ ] Phase 11 — stretch goals
+- [x] Phase 11.1 — PDF ingestion (PyMuPDF, supports .txt and .pdf natively)
+- [x] Phase 11.2 — Structured dosage/contraindication schema (HAS_DOSAGE and
+      CONTRAINDICATED_FOR typed relationship properties, machine-queryable)
+- [x] Phase 11.3 — Recency weighting (publication_date on chunks, linear penalty
+      for older documents in confidence scoring)
+- [x] Phase 11.4 — Web UI (Gradio-based, three tabs: Ingest/Query/Stats)
+- [x] Phase 11.5 — Eval harness (8 labeled Q&A test cases, automated validation
+      runner checking source citations, confidence range, and keyword presence)

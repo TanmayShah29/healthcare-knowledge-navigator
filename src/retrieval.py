@@ -2,6 +2,7 @@
 
   question ─▶ embed question ─▶ vector search over Chunks ─▶ vector_hits
             ─▶ link entities ─▶ fuzzy-match against graph ─▶ multi-hop traversal ─▶ subgraph
+                                   └─▶ dosage/contraindication lookup
 
 Vector search and graph traversal run independently and their results are
 combined by the Synthesizer — this is what makes it "hybrid" rather than
@@ -15,7 +16,10 @@ from src.config import MAX_HOPS
 from src.state import RetrievalResult
 from src.embeddings import embed_text
 from src.agents.entity_linker import link_entities
-from src.graph_db import find_entities_like, multi_hop_neighbors, vector_search
+from src.graph_db import (
+    find_entities_like, multi_hop_neighbors, vector_search,
+    query_dosages, query_contraindications,
+)
 
 
 def retrieve(question: str) -> RetrievalResult:
@@ -31,5 +35,7 @@ def retrieve(question: str) -> RetrievalResult:
     result.linked_entities = seed_names
     if seed_names:
         result.subgraph = multi_hop_neighbors(seed_names, max_hops=MAX_HOPS)
+        result.dosages = query_dosages(seed_names)
+        result.contraindications = query_contraindications(seed_names)
 
     return result

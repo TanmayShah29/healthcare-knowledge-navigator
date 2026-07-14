@@ -36,15 +36,16 @@ chains) — and the Synthesizer agent combines both into one cited answer.
 
 ```
 INGESTION (per document — clinical_guideline | research_paper | treatment_protocol):
-  document text ─▶ section-aware chunking ─▶ embed each chunk ─▶ Neo4j Chunk node
-                                            └─▶ Extractor Agent ─▶ triples ─▶ Neo4j Entity graph (MERGE, idempotent)
+  document text/pdf ─▶ section-aware chunking ─▶ embed each chunk ─▶ Neo4j Chunk node
+                                              └─▶ Extractor Agent ─▶ triples + dosages + contraindications ─▶ Neo4j graph (MERGE, idempotent)
 
 QUERY (hybrid):
   question ─▶ embed question ─▶ Neo4j vector index search ─▶ vector_hits (passages)
             ─▶ Entity Linker Agent ─▶ candidate names ─▶ fuzzy-match ─▶ seed entities
                                                         ─▶ multi-hop Cypher traversal ─▶ subgraph (facts)
-            ─▶ Synthesizer Agent (vector_hits + subgraph) ─▶ cited answer, grounded flag
-            ─▶ Confidence Scorer (similarity + source agreement + graph corroboration) ─▶ score + label
+                                                        ─▶ dosage/contraindication lookup
+            ─▶ Synthesizer Agent (vector_hits + subgraph + dosages + contras) ─▶ cited answer, grounded flag
+            ─▶ Confidence Scorer (similarity + source agreement + graph corroboration + recency) ─▶ score + label
 ```
 
 Schema (entities and chunks are separate node families, linked implicitly via shared
@@ -53,21 +54,25 @@ an entity can appear in several chunks):
 
 ```
 (:Entity {name, type})-[:RELATES_TO {predicate, source_doc, doc_type}]->(:Entity)
-(:Chunk {chunk_id, text, source_doc, doc_type, section, embedding})   -- vector-indexed
+(:Entity {name})-[:HAS_DOSAGE {dose, frequency, route, notes, source_doc, doc_type}]->(:Entity)
+(:Entity {name})-[:CONTRAINDICATED_FOR {reason, severity, source_doc, doc_type}]->(:Entity)
+(:Chunk {chunk_id, text, source_doc, doc_type, section, embedding, publication_date})   -- vector-indexed
 ```
 
 ## Agents
 
-- **Extractor** — clinical text chunk → JSON list of `{subject, predicate, object}`
-  triples (entity types: Condition, Drug, Symptom, Treatment, Procedure, Guideline,
-  RiskFactor). Explicitly instructed not to infer dosages, indications, or
-  contraindications beyond what the text states.
+- **Extractor** — clinical text chunk → JSON with `{triples, dosages, contraindications}`.
+  Triples are `(subject, predicate, object)` facts (entity types: Condition, Drug, Symptom,
+  Treatment, Procedure, Guideline, RiskFactor). Dosages are structured `(drug, dose,
+  frequency, route)` facts. Contraindications are structured `(drug, condition, reason,
+  severity)` facts. All extracted in a single LLM call. Explicitly instructed not to infer
+  dosages, indications, or contraindications beyond what the text states.
 - **Entity Linker** — question → candidate clinical entity names, expanding common
   medical abbreviations (T2DM, MI, ...) so either form matches the graph.
-- **Synthesizer** — question + retrieved evidence (facts + passages) → answer with
-  inline `[Source, doc_type]` citations after each claim. Emits an internal
-  "insufficient evidence" flag (used by the confidence scorer) rather than silently
-  filling gaps from general medical knowledge.
+- **Synthesizer** — question + retrieved evidence (facts + passages + dosages +
+  contraindications) → answer with inline `[Source, doc_type]` citations after each
+  claim. Emits an internal "insufficient evidence" flag (used by the confidence scorer)
+  rather than silently filling gaps from general medical knowledge.
 
 Multi-hop traversal and vector similarity search themselves (`src/graph_db.py`) are
 plain Cypher — no LLM involved, keeping retrieval fast and deterministic. Vector search
@@ -104,8 +109,11 @@ embedding providers.
 ```bash
 # Ingest the sample documents (two sources, so hybrid retrieval + source
 # agreement in the confidence score both have something to demonstrate)
-python -m src.main ingest samples/t2dm_management_guideline.txt clinical_guideline
-python -m src.main ingest samples/cv_risk_t2dm_research_summary.txt research_paper
+python -m src.main ingest samples/t2dm_management_guideline.txt clinical_guideline --date 2024-01-01
+python -m src.main ingest samples/cv_risk_t2dm_research_summary.txt research_paper --date 2023-06-15
+
+# PDF ingestion is supported natively
+python -m src.main ingest path/to/guideline.pdf clinical_guideline --date 2024-06-01
 
 # A question answerable from one document (high vector similarity, one source)
 python -m src.main query "What is first-line therapy for Type 2 Diabetes Mellitus?"
@@ -119,6 +127,12 @@ python -m src.main query "What second-line diabetes drug should I consider for a
 python -m src.main query "What is the recommended dosage of insulin glargine?"
 
 python -m src.main stats
+
+# Launch the Gradio web UI (http://127.0.0.1:7860)
+python -m src.main web
+
+# Run the eval harness (8 labeled test cases)
+python -m eval.run_eval --verbose
 ```
 
 ## Bring your own AI API
@@ -144,12 +158,13 @@ matching API key(s), in `.env`.
 - [x] Section-aware chunking (headings tracked for finer-grained citations)
 - [x] Extractor, Entity Linker, and Synthesizer agents (clinical-tuned)
 - [x] Deterministic confidence scoring (similarity + source agreement + graph corroboration)
-- [x] CLI (`check` / `ingest` / `query` / `stats`)
+- [x] CLI (`check` / `ingest` / `query` / `stats` / `web`)
 - [x] Sample documents spanning two doc types for immediate testing
-- [ ] PDF ingestion (currently plain text; guidelines are often PDF in practice)
-- [ ] Structured dosage/contraindication schema (beyond free-text predicates) for safer
-      machine-readable extraction
-- [ ] Recency weighting in confidence scoring (a 2015 guideline vs. a 2024 one)
-- [ ] Web UI for clinicians (current interface is CLI-only)
-- [ ] Eval harness — a labeled set of clinical Q&A pairs to catch retrieval/synthesis
-      regressions automatically
+- [x] PDF ingestion via PyMuPDF (guidelines are often PDF in practice)
+- [x] Structured dosage/contraindication schema (HAS_DOSAGE, CONTRAINDICATED_FOR typed
+      relationship properties for machine-queryable clinical safety data)
+- [x] Recency weighting in confidence scoring (publication_date on chunks, linear penalty
+      for documents older than 3 years)
+- [x] Web UI via Gradio (Ingest/Query/Stats tabs at http://127.0.0.1:7860)
+- [x] Eval harness — 8 labeled clinical Q&A test cases with automated validation
+      (source citations, confidence range, keyword presence)

@@ -1,0 +1,74 @@
+[
+  {
+    "id": "single-doc-first-line",
+    "question": "What is first-line therapy for Type 2 Diabetes Mellitus?",
+    "expected_sources": ["t2dm_management_guideline.txt"],
+    "expected_min_confidence": "Medium",
+    "expected_max_confidence": "High",
+    "expected_keywords": ["Metformin", "first-line"],
+    "description": "Single-document question answerable from the guideline only."
+  },
+  {
+    "id": "multi-doc-second-line-hf",
+    "question": "What second-line diabetes drug should I consider for a patient with heart failure, and are there monitoring concerns?",
+    "expected_sources": ["t2dm_management_guideline.txt", "cv_risk_t2dm_research_summary.txt"],
+    "expected_min_confidence": "Medium",
+    "expected_max_confidence": "High",
+    "expected_keywords": ["SGLT2", "heart failure"],
+    "description": "Multi-document question requiring both sources — SGLT2 for T2DM (guideline) + heart failure reduction (research)."
+  },
+  {
+    "id": "single-doc-contraindication",
+    "question": "Is Metformin contraindicated with severe renal impairment?",
+    "expected_sources": ["t2dm_management_guideline.txt"],
+    "expected_min_confidence": "Medium",
+    "expected_max_confidence": "High",
+    "expected_keywords": ["contraindicated", "renal", "eGFR"],
+    "description": "Direct contraindication question from one document."
+  },
+  {
+    "id": "multi-doc-cv-risk",
+    "question": "Do SGLT2 inhibitors reduce cardiovascular risk in patients with Type 2 Diabetes?",
+    "expected_sources": ["t2dm_management_guideline.txt", "cv_risk_t2dm_research_summary.txt"],
+    "expected_min_confidence": "Medium",
+    "expected_max_confidence": "High",
+    "expected_keywords": ["SGLT2", "cardiovascular", "heart failure"],
+    "description": "Question spanning both documents on CV risk reduction."
+  },
+  {
+    "id": "no-evidence-dosage",
+    "question": "What is the recommended dosage of insulin glargine?",
+    "expected_sources": [],
+    "expected_min_confidence": "Low",
+    "expected_max_confidence": "Low",
+    "expected_keywords": [],
+    "description": "No evidence in ingested set — must trigger insufficient evidence marker and Low confidence."
+  },
+  {
+    "id": "single-doc-monitoring",
+    "question": "What monitoring is recommended for patients with Type 2 Diabetes Mellitus?",
+    "expected_sources": ["t2dm_management_guideline.txt"],
+    "expected_min_confidence": "Medium",
+    "expected_max_confidence": "High",
+    "expected_keywords": ["monitor", "Retinopathy", "Nephropathy"],
+    "description": "Monitoring question from the guideline's Monitoring section."
+  },
+  {
+    "id": "multi-doc-glp1-cv",
+    "question": "What cardiovascular benefits do GLP-1 receptor agonists provide for T2DM patients?",
+    "expected_sources": ["t2dm_management_guideline.txt", "cv_risk_t2dm_research_summary.txt"],
+    "expected_min_confidence": "Medium",
+    "expected_max_confidence": "High",
+    "expected_keywords": ["GLP-1", "Myocardial Infarction", "Stroke"],
+    "description": "Multi-document question on GLP-1 cardiovascular benefits."
+  },
+  {
+    "id": "no-evidence-unrelated",
+    "question": "What is the recommended treatment for community-acquired pneumonia?",
+    "expected_sources": [],
+    "expected_min_confidence": "Low",
+    "expected_max_confidence": "Low",
+    "expected_keywords": [],
+    "description": "Completely unrelated to ingested documents — must not hallucinate."
+  }
+]
